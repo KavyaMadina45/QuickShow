@@ -44,9 +44,12 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { StarIcon } from 'lucide-react';
 import timeFormat from '../lib/timeFormat';
+import { useAppContext } from '../context/AppContext';
 
 const MovieCard = ({ movie }) => {
   const navigate = useNavigate();
+
+  const {image_base_url}=useAppContext()
 
   // Guard clause to avoid rendering if movie is not ready
   if (!movie) return null;
@@ -61,7 +64,7 @@ const MovieCard = ({ movie }) => {
             navigate(`/movies/${movie._id}`);
             scrollTo(0, 0);
           }}
-          src={movie.backdrop_path}
+          src={image_base_url+movie.backdrop_path}
           alt={movie.title || "Movie Poster"}
           className="rounded-lg h-52 w-full object-cover object-right-bottom cursor-pointer"
         />
@@ -98,7 +101,7 @@ const MovieCard = ({ movie }) => {
             <StarIcon className="w-4 h-4 text-primary fill-primary" />
             {movie.vote_average.toFixed(1)}
           </p>
-        )}
+  )}
       </div>
     </div>
   );
