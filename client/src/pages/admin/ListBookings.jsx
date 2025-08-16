@@ -45,6 +45,7 @@ useEffect(()=>{
                     <th className='p-2 font-medium'>Show Time</th>
                     <th className='p-2 font-medium'>Seats</th>
                     <th className='p-2 font-medium'>Amount</th>
+                    <th className='p-2 font-medium'>Status</th>
                 </tr>
             </thead>
             <tbody className='text-sm font-light'>
@@ -55,6 +56,19 @@ useEffect(()=>{
                         <td className='p-2'>{dateFormat(item.show.showDateTime)}</td>
                         <td className='p-2'>{Object.keys(item.bookedSeats).map(seat=>item.bookedSeats[seat]).join(", ")}</td>
                         <td className='p-2'>{currency} {item.amount}</td>
+
+                        <td className='p-2'>
+        {item.isPaid ? (
+          <span className='text-green-600 font-semibold'>Paid</span>
+        ) : (
+          <a
+            href={item.paymentLink}
+            className='bg-primary px-4 py-1.5 text-sm rounded-full font-medium text-white cursor-pointer'
+          >
+            Pay Now
+          </a>
+        )}
+      </td>
                     </tr>
                 ))}
 
