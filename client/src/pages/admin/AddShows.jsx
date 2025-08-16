@@ -7,6 +7,8 @@ import { kConverter } from '../../lib/kConverter';
 import { useAppContext } from '../../context/AppContext';
 import toast from 'react-hot-toast';
 
+
+
 const AddShows = () => {
 
 const {axios,getToken,user,image_base_url}=useAppContext()
@@ -22,20 +24,17 @@ const [showPrice,setShowPrice]=useState("");
 
 const [addingShow,setAddingShow]=useState(false)
 
-
-
-const fetchNowPlayingMovies=async()=>{
-    try{
-      const {data}=await axios.get('/api/show/now-playing',{
-        headers:{Authorization:`Bearer ${await getToken()}`}})
-        if(data.success){
-          setNowPlayingMovies(data.movies)
-        }
+const fetchNowPlayingMovies = async () => {
+  try {
+    const { data } = await axios.get("/api/show/now-playing"); // No need for token unless your backend is protected
+    if (data.success) {
+      setNowPlayingMovies(data.movies);
     }
-    catch(error){
-      console.error('Error fetching movies:',error)
-    }
+  } catch (error) {
+    console.error("Error fetching movies:", error);
+  }
 };
+
 
 {/*handleDataTimeAdd function creation */}
 const handleDataTimeAdd=()=>{
@@ -67,41 +66,60 @@ const handleRemoveTime=(date,time)=>{
   });
 };
 
-const handleSubmit=async()=>{
-  try{
-    setAddingShow(true)
+const handleSubmit = async () => {
+  try {
+    setAddingShow(true);
 
-    if(!selectedMovie || Object.keys(dateTimeSelection).length === 0 || !showPrice){
-      return toast('Missing required fields');
-    }
-    const showsInput=Object.entries(dateTimeSelection).map(([date,time])=>({date,time}));
-    const payload={
-      movieId: selectedMovie,
-      showsInput,
-      showPrice: Number(showPrice)
+    if (!selectedMovie || Object.keys(dateTimeSelection).length === 0 || !showPrice) {
+      return toast("Missing required fields");
     }
 
-    const {data}=await axios.post('/api/show/add',payload,{headers:{
-      Authorization:`Bearer ${await getToken()}`}})
+    const showsInput = Object.entries(dateTimeSelection).map(([date, times]) => ({ date, times}));
 
-      if(data.success){
-        toast.success(data.message)
-        setSelectedMovie(null)
-        setDateTimeSelection({})
-        setShowPrice("")
-      }
-      else{
-        toast.error(data.message)
-      }
-  }
-  catch(error){
-    console.error("Submission error :",error);
-    toast.error("An error occurred.please try again")
-  }
-  setAddingShow(false)
+const movieId = selectedMovie?.id || selectedMovie?._id || selectedMovie;
 
+
+const isValidMovieId = (id) => {
+  return /^[a-fA-F0-9]{24}$/.test(id) || /^\d+$/.test(id); // Allow Mongo ObjectId OR TMDB numeric ID
+};
+
+if (!isValidMovieId(movieId)) {
+  toast.error("Invalid movie ID");
+  return;
 }
-   
+
+
+
+    const payload = {
+      movieId:movieId,
+      showsInput,
+      showPrice: Number(showPrice),
+    };
+
+    console.log("Submitting payload:", payload);
+
+    const token = await getToken();
+    const { data } = await axios.post("/api/show/add", payload, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (data.success) {
+      toast.success(data.message);
+      setSelectedMovie(null);
+      setDateTimeSelection({});
+      setShowPrice("");
+    } else {
+      toast.error(data.message);
+    }
+  } catch (error) {
+    console.error("Submission error:", error?.response?.data || error.message);
+    toast.error("An error occurred. Please try again");
+  }
+
+  setAddingShow(false);
+};
 
 
 useEffect(()=>{
@@ -121,7 +139,7 @@ return nowPlayingMovies.length > 0 ? (
       <div className='overflow-x-auto pb-4'>
         <div className='group flex flex-wrap gap-4 mt-4 w-max'>
         {nowPlayingMovies.map((movie)=>(
-            <div key={movie.id} onClick={()=> setSelectedMovie(movie.id)} className={`relative max-w-40 cursor-pointer group-hover:not-hover:opacity-40 hover:-translate-y-1 transition duration-300`}>
+            <div key={movie._id || movie.id} onClick={()=> setSelectedMovie(movie)} className={`relative max-w-40 cursor-pointer group-hover:not-hover:opacity-40 hover:-translate-y-1 transition duration-300`}>
 
                 <div className='relative rounded-lg overflow-hidden'>
                 <img src={ image_base_url + movie.poster_path} alt="" className='w-full object-cover brightness-90'/>
@@ -135,7 +153,7 @@ return nowPlayingMovies.length > 0 ? (
                   </div>
                 </div>
 
-                {selectedMovie === movie.id && (
+                {selectedMovie && selectedMovie.id === movie.id && (
                   <div className='absolute top-2 right-2 flex items-center justify-center bg-primary h-6 w-6 rounded'>
                     <CheckIcon className='w-4 h-4 text-white' strokeWidth={2.5}/>
                     </div>

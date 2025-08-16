@@ -6,131 +6,206 @@ import { getOccupiedSeats } from "./bookingControllers.js";
 
 
 
-//Api to get now playing movies from TMDB API
+import axiosRetry from "axios-retry";
 
-// export const getNowPlayingMovies=async(req,res)=>{
-//     try{
-//     const {data}=await axios.get('https://api.themoviedb.org/3/movie/now_playing',{
-//         headers: {Authorization: `Bearer ${process.env.TMDB_API_KEY}`}
-//         });
-
-//         const movies =data.results;
-//         res.json({success:true,movies:movies})
-//     }
-//     catch(error){
-//         console.log(error);
-//         res.json({success:false,message:error.message})
-//     }
-// } 
+axiosRetry(axios, {
+  retries: 3,
+  retryDelay: axiosRetry.exponentialDelay,
+  retryCondition: (error) =>
+    axiosRetry.isNetworkOrIdempotentRequestError(error) || error.code === "ECONNRESET",
+});
 
 export const getNowPlayingMovies = async (req, res) => {
-    try {
-      // Fetch from TMDB
-      const tmdbResponse = await axios.get(
-        "https://api.themoviedb.org/3/movie/now_playing",
-        {
-          headers: {
-            Authorization: `Bearer ${process.env.TMDB_API_KEY}`, // Make sure key is set
-          },
-        }
-      );
-  
-      const tmdbMovies = tmdbResponse.data.results.map((movie) => ({
-        _id: movie.id, // temporary ID
-        title: movie.title,
-        description: movie.overview,
-        posterUrl: `https://image.tmdb.org/t/p/w500${movie.poster_path}`,
-        isFromTMDB: true,
-      }));
-  
-      // Fetch from your MongoDB
-      const customMovies = await Movie.find().lean();
-  
-      const mappedCustomMovies = customMovies.map((movie) => ({
-        ...movie,
-        isFromTMDB: false,
-      }));
-  
-      // Combine both
-      const allMovies = [...mappedCustomMovies, ...tmdbMovies];
-  
-      res.status(200).json(allMovies);
-    } catch (error) {
-      console.error("Error fetching now playing movies:", error);
-      res.status(500).json({ message: "Failed to fetch movies" });
+  try {
+    const apiKey = process.env.TMDB_API_KEY || "5ecd245745e9f2fa35fad827dc959f4a";
+
+    if (!apiKey) {
+      console.error("❌ TMDB_API_KEY is undefined");
+      return res.status(500).json({ success: false, message: "TMDB API key not found." });
     }
-  };
+
+    const { data } = await axios.get("https://api.themoviedb.org/3/movie/now_playing", {
+      params: {
+        api_key: apiKey,
+        language: "en-US",
+        page: 1,
+      },
+      timeout: 5000, // 5 seconds timeout
+    });
+
+    res.status(200).json({ success: true, movies: data.results });
+  } catch (error) {
+    console.error("❌ Error fetching now playing movies:", error.message);
+    console.error(error.response?.data || error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch now playing movies.",
+    });
+  }
+};
+
+
+
+
+
+
+
 
 
 //API to add a new show to the database
 
-export const addShow=async(req,res)=>{
-    try{
-        const {movieId,showsInput,showPrice}=req.body
+// export const addShow=async(req,res)=>{
+//     try{
+//         const { movieId, showsInput, showPrice } = {
+//             movieId: req.body.movieId?.id || req.body.movieId,
+//             showsInput: req.body.showsInput,
+//             showPrice: req.body.showPrice,
+//           };
+          
 
-        let movie= await Movie.findById(movieId)
+//         let movie= await Movie.findById(movieId)
 
-        if(!movie){
-            //fetch movie details and credits from TMDB API
-            const [movieDetailsResponse,movieCreditsResponse]=await Promise.all([
-                axios.get(`https://api.themoviedb.org/3/movie/${movieId}`,{
-                    headers: {Authorization: `Bearer ${process.env.TMDB_API_KEY}`}
-                    }),
-                    //add another api call
-                    axios.get(`https://api.themoviedb.org/3/movie/${movieId}/credits`,{
-                        headers:{Authorization:`Bearer ${process.env.TMDB_API_KEY}`}
-                    })
-            ]);
-
-
-            const movieApiData=movieDetailsResponse.data;
-            const movieCreditsData=movieCreditsResponse.data;
-
-
-            const movieDetails={
-                _id:movieId,
-                title:movieApiData.title,
-                overview:movieApiData.overview,
-                poster_path:movieApiData.poster_path,
-                backdrop_path:movieApiData.backdrop_path,
-                genres:movieApiData.genres,
-                casts:movieCreditsData.cast,
-                release_date:movieApiData.release_date,
-                original_language:movieApiData.original_language,
-                tagline:movieApiData.tagline || "",
-                vote_average:movieApiData.vote_average,
-                runtime:movieApiData.runtime,
-            }
-
-            //Add movie to the database
-            movie=await Movie.create(movieDetails);
-        }
-
-        const showsToCreate=[];
-        showsInput.forEach(show=>{
-            const showDate=show.date;
-            show.time.forEach((time)=>{
-                const dateTimeString=`${showDate}T${time}`;
-                showsToCreate.push({
-                    movie:movieId,
-                    showDateTime:new Date(dateTimeString),
-                    showPrice,
-                    occupiedSeats:{}
-                })
-            })
-        });
+//         if(!movie){
+//             //fetch movie details and credits from TMDB API
+//             const [movieDetailsResponse,movieCreditsResponse]=await Promise.all([
+//                 axios.get(`https://api.themoviedb.org/3/movie/${movieId}`,{
+//                     headers: {Authorization: `Bearer ${process.env.TMDB_API_KEY}`}
+//                     }),
+//                     //add another api call
+//                     axios.get(`https://api.themoviedb.org/3/movie/${movieId}/credits`,{
+//                         headers:{Authorization:`Bearer ${process.env.TMDB_API_KEY}`}
+//                     })
+//             ]);
 
 
-        if(showsToCreate.length > 0){
-            await Show.insertMany(showsToCreate);
-        }
+//             const movieApiData=movieDetailsResponse.data;
+//             const movieCreditsData=movieCreditsResponse.data;
 
-        res.json({success:true,message:"Show Added Successfully!"})
-    }catch(error){
-        console.error(error);
-        res.json({success:false,message:error.message})
+
+//             const movieDetails={
+//                 _id:movieId,
+//                 title:movieApiData.title,
+//                 overview:movieApiData.overview,
+//                 poster_path:movieApiData.poster_path,
+//                 backdrop_path:movieApiData.backdrop_path,
+//                 genres:movieApiData.genres,
+//                 casts:movieCreditsData.cast,
+//                 release_date:movieApiData.release_date,
+//                 original_language:movieApiData.original_language,
+//                 tagline:movieApiData.tagline || "",
+//                 vote_average:movieApiData.vote_average,
+//                 runtime:movieApiData.runtime,
+//             }
+
+//             //Add movie to the database
+//             movie=await Movie.create(movieDetails);
+//         }
+
+//         const showsToCreate=[];
+//         showsInput.forEach(show=>{
+//             const showDate=show.date;
+//             show.time.forEach((time)=>{
+//                 const dateTimeString=`${showDate}T${time}`;
+//                 showsToCreate.push({
+//                     movie:movieId,
+//                     showDateTime:new Date(dateTimeString),
+//                     showPrice,
+//                     occupiedSeats:{}
+//                 })
+//             })
+//         });
+
+
+//         if(showsToCreate.length > 0){
+//             await Show.insertMany(showsToCreate);
+//         }
+
+//         res.json({success:true,message:"Show Added Successfully!"})
+//     }catch(error){
+//         console.error(error);
+//         res.json({success:false,message:error.message})
+//     }
+// }
+
+
+export const addShow = async (req, res) => {
+  try {
+    // Safely extract movieId from body
+    const movieId = req.body.movieId;
+
+    const { showsInput, showPrice } = req.body;
+
+
+    if (!movieId) {
+      return res.status(400).json({ success: false, message: "Invalid movie ID" });
     }
-}
+
+    let movie = await Movie.findById(movieId);
+
+    if (!movie) {
+      // Fetch from TMDb v3 using API key in query
+      const apiKey = process.env.TMDB_API_KEY;
+
+      const [movieDetailsResponse, movieCreditsResponse] = await Promise.all([
+        axios.get(`https://api.themoviedb.org/3/movie/${movieId}?api_key=${apiKey}`),
+        axios.get(`https://api.themoviedb.org/3/movie/${movieId}/credits?api_key=${apiKey}`)
+      ]);
+
+      const movieApiData = movieDetailsResponse.data;
+      const movieCreditsData = movieCreditsResponse.data;
+
+      const movieDetails = {
+        _id: movieApiData.id.toString(),
+        title: movieApiData.title,
+        overview: movieApiData.overview,
+        poster_path: movieApiData.poster_path,
+        backdrop_path: movieApiData.backdrop_path,
+        genres: movieApiData.genres,
+        casts: movieCreditsData.cast,
+        release_date: movieApiData.release_date,
+        original_language: movieApiData.original_language,
+        tagline: movieApiData.tagline || "",
+        vote_average: movieApiData.vote_average,
+        runtime: movieApiData.runtime,
+      };
+
+      // Save movie in DB
+      movie = await Movie.create(movieDetails);
+    }
+
+    const showsToCreate = [];
+showsInput.forEach((show) => {
+  const showDate = show.date;
+  show.times.forEach((time) => {
+    const dateTimeString = `${showDate}T${time}`;
+    showsToCreate.push({
+      movie: movie._id, // ✅ Use movie._id from DB
+      showDateTime: new Date(dateTimeString),
+      showPrice,
+      occupiedSeats: {},
+    });
+  });
+});
+
+    
+
+    if (showsToCreate.length > 0) {
+      await Show.insertMany(showsToCreate);
+    }
+
+    res.json({ success: true, message: "Show Added Successfully!" });
+  } catch (error) {
+    console.error("❌ Error in addShow:", error.message);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+
+
+
+
+
+
 
 
 
