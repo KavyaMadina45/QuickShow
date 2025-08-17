@@ -14,33 +14,11 @@ export const stripeWebhooks=async(request,response)=>{
     catch(error){
         return response.status(400).send(`Webhook Error: ${error.message}`);
     }
-    // try{
-    //     switch(event.type){
-    //         case "checkout.session.completed":{
-    //             const paymentIntent=event.data.object;
-    //             const sessionList=await stripeInstance.checkout.sessions.list({
-    //                 payment_intent:paymentIntent.id
-    //             })
 
-    //             const session=sessionList.data[0];
-    //             const {bookingId}=session.metadata;
 
-    //             await Booking.findByIdAndUpdate(bookingId,{
-    //                 isPaid:true,
-    //                 paymentLink:null,
-    //             })
-    //             break;
-    //         }
 
-    //         default:
-    //             console.log('Unhandled event type:',event.type)
-    //     }
-    //     response.json({received:true})
-    // }
-    // catch(error){
-    //     console.error("Webhook processing error:",error);
-    //     response.status(500).send("Internal Server Error");
-    // }
+
+    
     try {
     switch (event.type) {
         case "checkout.session.completed": {
