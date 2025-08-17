@@ -83,8 +83,8 @@
 import dotenv from "dotenv";
 dotenv.config();
 
-import fetch from "node-fetch";
-global.fetch = fetch;
+// import fetch from "node-fetch";
+// global.fetch = fetch;
 
 import express from "express";
 import cors from "cors";
