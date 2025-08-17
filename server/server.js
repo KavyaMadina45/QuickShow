@@ -100,16 +100,26 @@ import adminRouter from "./routes/adminRoutes.js";
 import userRouter from "./routes/userRoutes.js";
 import { stripeWebhooks } from "./controllers/stripeWebhooks.js";
 
-// Init app
 const app = express();
 
-// Connect DB
-connectDB();
+// Connect DB safely
+(async () => {
+  try {
+    await connectDB();
+    console.log("✅ Database connected");
+  } catch (err) {
+    console.error("❌ Database connection failed:", err.message);
+  }
+})();
 
-// Stripe webhook (raw body parser only for this route)
-app.post("/api/stripe/webhook", express.raw({ type: "application/json" }), stripeWebhooks);
+// Stripe webhook BEFORE json middleware
+app.post(
+  "/api/stripe/webhook",
+  express.raw({ type: "application/json" }),
+  stripeWebhooks
+);
 
-// Global middlewares
+// Middlewares
 app.use(cors());
 app.use(express.json());
 app.use(clerkMiddleware());
@@ -122,16 +132,15 @@ app.use("/api/booking", bookingRouter);
 app.use("/api/admin", adminRouter);
 app.use("/api/user", userRouter);
 
-// Local dev only
+// Local dev
 if (process.env.NODE_ENV !== "production") {
   const port = 3000;
-  app.listen(port, () => console.log(`Server running at http://localhost:${port}`));
+  app.listen(port, () =>
+    console.log(`Server running at http://localhost:${port}`)
+  );
 }
 
-// Vercel needs this
+// Export for Vercel
 export default app;
-
-
-
 
 
