@@ -9,7 +9,12 @@ import express from "express";
 import cors from "cors";
 
 import connectDB from "./configs/db.js";
-import { clerkMiddleware } from "@clerk/express";
+// import { clerkMiddleware } from "@clerk/express";
+let clerkMiddleware;
+(async () => {
+  ({ clerkMiddleware } = await import("@clerk/express"));
+})();
+
 import { serve } from "inngest/express";
 import { inngest, functions } from "./inngest/index.js";
 
