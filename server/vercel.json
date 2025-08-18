@@ -3,14 +3,15 @@
   "version": 2,
   "functions": {
     "api/**/*.js": {
-      "runtime": "nodejs18.x"
+      "runtime": "@vercel/node@2.0.0"
     }
   },
   "buildCommand": "npm install",
+  "outputDirectory": ".",
   "routes": [
     {
-      "src": "/api/(.*)",
-      "dest": "/api/$1.js"
+      "src": "/(.*)",
+      "dest": "/index.js"
     }
   ]
 }
